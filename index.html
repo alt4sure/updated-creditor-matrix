@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creditor Mailing Matrix Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    input { width: 100%; padding: 8px; margin: 6px 0; font-family: Arial, sans-serif; font-size: 12pt; }
+    button { padding: 10px 15px; margin-top: 10px; }
+    .creditor-block { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; }
+    #output { white-space: pre-wrap; background: #fff; padding: 10px; border: 1px solid #ccc; min-height: 300px; font-family: Courier, monospace; }
+  </style>
+</head>
+<body>
+  <h2>Creditor Mailing Matrix Generator</h2>
+
+  <div id="form-area"></div>
+
+  <button onclick="addCreditorBlock()">+ Add Another Creditor</button>
+  <button onclick="generateMatrix()">Generate Matrix</button>
+  <button onclick="downloadMatrix()">Download .txt</button>
+  <button onclick="saveData()">Save</button>
+  <button onclick="loadData()">Load</button>
+
+  <h3>Formatted Matrix Output:</h3>
+  <div id="output"></div>
+
+  <script>
+    function createBlock(data = {}) {
+      const div = document.createElement('div');
+      div.className = 'creditor-block';
+      div.innerHTML = `
+        <input type="text" placeholder="Creditor Name (35 chars max)" maxlength="35" class="name" value="${data.name || ''}">
+        <input type="text" placeholder="Attention Line or Address (35 chars max)" maxlength="35" class="line1" value="${data.line1 || ''}">
+        <input type="text" placeholder="Address Line 2 (optional, 35 chars max)" maxlength="35" class="line2" value="${data.line2 || ''}">
+        <input type="text" placeholder="City (no punctuation)" maxlength="35" class="city" value="${data.city || ''}">
+        <input type="text" placeholder="State (e.g., CA)" maxlength="2" class="state" value="${data.state || ''}">
+        <input type="text" placeholder="ZIP Code (e.g., 92101-6991)" maxlength="10" class="zip" value="${data.zip || ''}">
+        <button onclick="deleteBlock(this)">Delete</button>
+      `;
+      return div;
+    }
+
+    function addCreditorBlock(data = {}) {
+      const formArea = document.getElementById('form-area');
+      const block = createBlock(data);
+      formArea.appendChild(block);
+    }
+
+    function deleteBlock(button) {
+      const block = button.parentElement;
+      block.remove();
+      saveData();
+    }
+
+    function clean(text) {
+      return text.replace(/[!@#$%^&*()_+=\[\]{}|;:'"<>?/`~]/g, '').slice(0, 35);
+    }
+
+    function getAllCreditorData() {
+      const blocks = document.querySelectorAll('.creditor-block');
+      const creditors = [];
+      blocks.forEach(block => {
+        const name = clean(block.querySelector('.name').value.trim());
+        const line1 = clean(block.querySelector('.line1').value.trim());
+        const line2 = clean(block.querySelector('.line2').value.trim());
+        const city = clean(block.querySelector('.city').value.trim());
+        const state = block.querySelector('.state').value.trim().toUpperCase();
+        const zip = block.querySelector('.zip').value.trim();
+        if (name && line1 && city && state && zip) {
+          creditors.push({ name, line1, line2, city, state, zip });
+        }
+      });
+      return creditors;
+    }
+
+    function generateMatrix() {
+      const creditors = getAllCreditorData();
+      creditors.sort((a, b) => a.name.localeCompare(b.name));
+      const matrix = creditors.map(c => {
+        let block = `${c.name}
+${c.line1}`;
+        if (c.line2) block += `
+${c.line2}`;
+        block += `
+${c.city}, ${c.state} ${c.zip}`;
+        return block;
+      }).join('\n\n\n');
+      document.getElementById('output').innerText = matrix;
+    }
+
+    function downloadMatrix() {
+      const text = document.getElementById('output').innerText;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'creditor_matrix.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function saveData() {
+      const creditors = getAllCreditorData();
+      localStorage.setItem('creditorData', JSON.stringify(creditors));
+      alert('Data saved.');
+    }
+
+    function loadData() {
+      const saved = localStorage.getItem('creditorData');
+      if (saved) {
+        const creditors = JSON.parse(saved);
+        document.getElementById('form-area').innerHTML = '';
+        creditors.forEach(c => addCreditorBlock(c));
+      } else {
+        alert('No saved data found.');
+      }
+    }
+
+    window.onload = function() {
+      loadData();
+    };
+  </script>
+</body>
+</html>
